@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: 'axiom-metrics'
+    type: 'axiomhq-metrics-datasource'
+    access: proxy
+    isDefault: false
+    orgId: 1
+    version: 1
+    editable: true
+    jsonData:
+      url: 'https://us-east-1.aws.edge.axiom.co'
+      apiUrl: 'https://api.axiom.co'
+      orgId: 'your-org-id'
+      path: '/resources'
+    secureJsonData:
+      apiKey: 'api-key'

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "datasource",
+  "name": "Axiom Metrics",
+  "id": "axiomhq-metrics-datasource",
+  "metrics": true,
+  "alerting": true,
+  "info": {
+    "description": "Query Metrics from Axiom",
+    "author": {
+      "name": "Axiom, Inc.",
+      "url": "https://axiom.co"
+    },
+    "keywords": ["datasource", "axiom", "metrics"],
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "links": [
+      {
+        "name": "GitHub",
+        "url": "https://github.com/axiomhq/axiomhq-metrics-datasource"
+      },
+      {
+        "name": "Discord",
+        "url": "https://axiom.co/discord"
+      }
+    ],
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "dependencies": {
+    "grafanaDependency": ">=12.3.0",
+    "plugins": []
+  },
+  "routes": [
+    {
+      "path": "query",
+      "url": "{{ .JsonData.url }}/v1/query/_mpl",
+      "headers": [
+        {
+          "name": "Authorization",
+          "content": "Bearer {{ .SecureJsonData.apiKey }}"
+        },
+        {
+          "name": "X-Axiom-Org-Id",
+          "content": "{{ .JsonData.orgId }}"
+        }
+      ]
+    },
+{
+      "path": "info",
+      "url": "{{ .JsonData.url }}/v1/query/metrics/info",
+      "headers": [
+        {
+          "name": "Authorization",
+          "content": "Bearer {{ .SecureJsonData.apiKey }}"
+        },
+        {
+          "name": "X-Axiom-Org-Id",
+          "content": "{{ .JsonData.orgId }}"
+        }
+      ]
+    },
+    {
+      "path": "datasets",
+      "url": "{{ .JsonData.apiUrl }}/v2/datasets",
+      "headers": [
+        {
+          "name": "Authorization",
+          "content": "Bearer {{ .SecureJsonData.apiKey }}"
+        },
+        {
+          "name": "X-Axiom-Org-Id",
+          "content": "{{ .JsonData.orgId }}"
+        }
+      ]
+    }
+  ]
+}
