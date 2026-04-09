@@ -4,7 +4,7 @@
   "name": "Axiom Metrics",
   "id": "axiomhq-metrics-datasource",
   "metrics": true,
-  "alerting": true,
+  "alerting": false,
   "info": {
     "description": "Query Metrics from Axiom",
     "author": {
@@ -26,7 +26,12 @@
         "url": "https://axiom.co/discord"
       }
     ],
-    "screenshots": [],
+    "screenshots": [
+      {
+        "name": "Query Editor",
+        "path": "img/screenshot-query.png"
+      }
+    ],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },

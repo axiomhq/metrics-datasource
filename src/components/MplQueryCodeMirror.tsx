@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
+import { css } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
+import { GrafanaTheme2 } from '@grafana/data';
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState, StateField, Prec } from '@codemirror/state';
 import { keymap, Decoration, DecorationSet } from '@codemirror/view';
@@ -7,7 +9,6 @@ import { acceptCompletion } from '@codemirror/autocomplete';
 import { indentWithTab } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { mplHighlighter, createMplCompletion, mplLinter, mplSignatureHelp, mplHover } from '@axiomhq/mpl-codemirror';
-import '@axiomhq/mpl-codemirror/styles/tokens.css';
 import { ensureMplInit } from '../mpl/ensureMplInit';
 import { DataSource } from '../datasource';
 
@@ -71,6 +72,63 @@ function buildPreambleDecorations(state: EditorState): DecorationSet {
   return Decoration.set(decorations);
 }
 
+function getMplTokenStyles(theme: GrafanaTheme2) {
+  const isDark = theme.isDark;
+  return css({
+    // Syntax highlighting
+    '& .mpl-keyword': { color: isDark ? '#c678dd' : '#7c3aed', fontWeight: 500 },
+    '& .mpl-variable': { color: isDark ? '#e06c75' : '#0550ae' },
+    '& .mpl-string': { color: isDark ? '#98c379' : '#0a3069' },
+    '& .mpl-number': { color: isDark ? '#d19a66' : '#0550ae' },
+    '& .mpl-bool': { color: isDark ? '#d19a66' : '#cf222e' },
+    '& .mpl-regexp': { color: isDark ? '#56b6c2' : '#116329' },
+    '& .mpl-operator': { color: isDark ? '#56b6c2' : '#cf222e' },
+    '& .mpl-punctuation': { color: isDark ? '#abb2bf' : '#cf222e' },
+    '& .mpl-type': { color: isDark ? '#56b6c2' : '#0550ae', fontStyle: 'italic' },
+    '& .mpl-comment': { color: isDark ? '#5c6370' : '#6e7781', fontStyle: 'italic' },
+    // Signature help tooltip
+    '& .mpl-signature-help': {
+      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+      fontSize: 13,
+      padding: '6px 10px',
+      maxWidth: 500,
+    },
+    '& .mpl-signature-sig': { whiteSpace: 'nowrap' },
+    '& .mpl-signature-fn': { color: isDark ? '#c678dd' : '#7c3aed', fontWeight: 600 },
+    '& .mpl-signature-param.active': {
+      fontWeight: 700,
+      textDecoration: 'underline',
+      color: isDark ? '#61afef' : '#0550ae',
+    },
+    '& .mpl-signature-doc': {
+      marginTop: 4,
+      fontSize: 12,
+      whiteSpace: 'pre-wrap',
+    },
+    // Hover tooltip
+    '& .mpl-hover-tooltip': {
+      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
+      fontSize: 13,
+      padding: '6px 10px',
+      maxWidth: 500,
+    },
+    '& .mpl-hover-sig': { whiteSpace: 'nowrap' },
+    '& .mpl-hover-fn': { color: isDark ? '#c678dd' : '#7c3aed', fontWeight: 600 },
+    '& .mpl-hover-keyword': { color: isDark ? '#c678dd' : '#7c3aed', fontWeight: 600 },
+    '& .mpl-hover-doc': {
+      marginTop: 4,
+      fontSize: 12,
+      whiteSpace: 'pre-wrap',
+    },
+    '& .mpl-hover-syntax': {
+      marginTop: 4,
+      fontSize: 12,
+      padding: '2px 6px',
+      borderRadius: 3,
+    },
+  });
+}
+
 interface Props {
   value: string;
   onChange: (value: string) => void;
@@ -89,6 +147,7 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
   const valueRef = useRef(value);
   const datasourceRef = useRef(datasource);
   const theme = useTheme2();
+  const tokenStyles = getMplTokenStyles(theme);
 
   onChangeRef.current = onChange;
   onBlurRef.current = onBlur;
@@ -191,6 +250,6 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
   }, [value]);
 
   return (
-    <div ref={containerRef} className={theme.isDark ? 'dark-theme' : undefined} style={{ minHeight: 200 }} />
+    <div ref={containerRef} className={tokenStyles} style={{ minHeight: 200 }} />
   );
 }
