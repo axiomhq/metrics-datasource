@@ -98,14 +98,21 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
           _time.push((series.start + i * series.resolution) * 1000);
         }
 
-        const name = Object.values(id.tags).map(k => `${k}`).join(' | ');
+        const hasTags = Object.keys(id.tags).length > 0;
 
         const frame: PartialDataFrame = createDataFrame({
           refId: target.refId,
           meta: notices.length > 0 ? { notices } : undefined,
           fields: [
-            { name: '_time', values: _time, type: FieldType.time },
-            { name: name, values: series.data, type: FieldType.number, labels: id.tags },
+            { name: 'Time', values: _time, type: FieldType.time },
+            {
+              name: 'Value',
+              values: series.data,
+              type: FieldType.number,
+              ...(hasTags
+                ? { labels: id.tags }
+                : { config: { displayNameFromDS: target.refId } }),
+            },
           ],
         });
         data.push(frame);
