@@ -12,7 +12,8 @@ import { mplHighlighter, createMplCompletion, mplLinter, mplSignatureHelp, mplHo
 import { ensureMplInit } from '../mpl/ensureMplInit';
 import { DataSource } from '../datasource';
 
-const PREAMBLE = 'param $__interval: duration; // auto-set by Grafana based on time range\nparam $__rate_interval: duration; // 4x $__interval, suitable for rate() windows\n';
+const PREAMBLE =
+  'param $__interval: Duration; // auto-set by Grafana based on time range\nparam $__rate_interval: Duration; // 4x $__interval, suitable for rate() windows\n';
 const PREAMBLE_LINES = 2;
 
 function preambleLength(state: EditorState): number {
@@ -47,7 +48,12 @@ const cursorGuard = EditorState.transactionFilter.of((tr) => {
 
 // Style preamble lines as dimmed / read-only
 const preambleLineDeco = Decoration.line({ attributes: { style: 'cursor: not-allowed;' } });
-const preambleLastLineDeco = Decoration.line({ attributes: { style: 'cursor: not-allowed; border-bottom: 1px solid rgba(128,128,128,0.3); padding-bottom: 4px; margin-bottom: 4px;' } });
+const preambleLastLineDeco = Decoration.line({
+  attributes: {
+    style:
+      'cursor: not-allowed; border-bottom: 1px solid rgba(128,128,128,0.3); padding-bottom: 4px; margin-bottom: 4px;',
+  },
+});
 
 const preambleDecorationField = StateField.define<DecorationSet>({
   create(state) {
@@ -176,11 +182,19 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
 
       const extensions = [
         basicSetup,
-        Prec.highest(keymap.of([
-          { key: 'Tab', run: acceptCompletion },
-          indentWithTab,
-          { key: 'Mod-Enter', run: () => { onRunQueryRef.current?.(); return true; } },
-        ])),
+        Prec.highest(
+          keymap.of([
+            { key: 'Tab', run: acceptCompletion },
+            indentWithTab,
+            {
+              key: 'Mod-Enter',
+              run: () => {
+                onRunQueryRef.current?.();
+                return true;
+              },
+            },
+          ])
+        ),
         EditorView.lineWrapping,
         mplHighlighter,
         completionExt,
@@ -249,7 +263,5 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
     }
   }, [value]);
 
-  return (
-    <div ref={containerRef} className={tokenStyles} style={{ minHeight: 200 }} />
-  );
+  return <div ref={containerRef} className={tokenStyles} style={{ minHeight: 200 }} />;
 }

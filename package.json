@@ -18,7 +18,7 @@
   "devDependencies": {
     "@babel/core": "^7.21.4",
     "@grafana/eslint-config": "^7.0.0",
-    "@grafana/plugin-e2e": "^3.4.12",
+    "@grafana/plugin-e2e": "^3.7.1",
     "@grafana/tsconfig": "^2.0.0",
     "@playwright/test": "^1.56.1",
     "@swc/core": "^1.3.90",
@@ -62,8 +62,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@axiomhq/mpl": "^0.2.64",
-    "@axiomhq/mpl-codemirror": "^0.2.64",
+    "@axiomhq/mpl": "^0.4.1",
+    "@axiomhq/mpl-codemirror": "^0.4.1",
     "@codemirror/autocomplete": "^6",
     "@codemirror/lint": "^6",
     "@codemirror/state": "^6",
