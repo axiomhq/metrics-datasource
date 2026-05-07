@@ -62,8 +62,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@axiomhq/mpl": "^0.2.64",
-    "@axiomhq/mpl-codemirror": "^0.2.64",
+    "@axiomhq/mpl": "^0.4.1",
+    "@axiomhq/mpl-codemirror": "^0.4.1",
     "@codemirror/autocomplete": "^6",
     "@codemirror/lint": "^6",
     "@codemirror/state": "^6",
