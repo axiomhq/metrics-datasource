@@ -10,6 +10,7 @@ import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 
 import { MplQueryCodeMirror } from './MplQueryCodeMirror';
 import { diagnostics } from '@axiomhq/mpl';
+import { MPL_SYSTEM_PARAMS } from '../constants';
 
 type Props = QueryEditorProps<DataSource, AxiomMetricsQuery, MyDataSourceOptions>;
 
@@ -49,7 +50,7 @@ export function QueryEditor({ query, onChange, onRunQuery, datasource }: Props) 
         query: values.query ?? '',
       });
       try {
-        const diags = diagnostics(values.query ?? '') as Array<{ severity: string }> | null;
+        const diags = diagnostics(values.query ?? '', MPL_SYSTEM_PARAMS) as Array<{ severity: string }> | null;
         if (diags?.some(d => d.severity === 'error')) {
           return;
         }

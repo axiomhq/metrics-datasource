@@ -3,80 +3,22 @@ import { css } from '@emotion/css';
 import { useTheme2 } from '@grafana/ui';
 import { GrafanaTheme2 } from '@grafana/data';
 import { EditorView, basicSetup } from 'codemirror';
-import { EditorState, StateField, Prec } from '@codemirror/state';
-import { keymap, Decoration, DecorationSet } from '@codemirror/view';
+import { EditorState, Prec } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
 import { acceptCompletion } from '@codemirror/autocomplete';
 import { indentWithTab } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { mplHighlighter, createMplCompletion, mplLinter, mplSignatureHelp, mplHover } from '@axiomhq/mpl-codemirror';
+import {
+  mplHighlighter,
+  createMplCompletion,
+  mplLinter,
+  mplSignatureHelp,
+  mplHover,
+  mplSystemParams,
+} from '@axiomhq/mpl-codemirror';
 import { ensureMplInit } from '../mpl/ensureMplInit';
 import { DataSource } from '../datasource';
-
-const PREAMBLE =
-  'param $__interval: Duration; // auto-set by Grafana based on time range\nparam $__rate_interval: Duration; // 4x $__interval, suitable for rate() windows\n';
-const PREAMBLE_LINES = 2;
-
-function preambleLength(state: EditorState): number {
-  if (PREAMBLE_LINES <= 0) {
-    return 0;
-  }
-  const line = state.doc.line(Math.min(PREAMBLE_LINES + 1, state.doc.lines));
-  return line.from;
-}
-
-// Reject any change that touches the preamble region
-const readOnlyPreamble = EditorState.changeFilter.of((tr) => {
-  const prefixEnd = preambleLength(tr.startState);
-  let dominated = false;
-  tr.changes.iterChangedRanges((fromA, toA) => {
-    if (fromA < prefixEnd) {
-      dominated = true;
-    }
-  });
-  return !dominated;
-});
-
-// Prevent cursor from entering the preamble
-const cursorGuard = EditorState.transactionFilter.of((tr) => {
-  const prefixEnd = preambleLength(tr.newDoc.lines >= PREAMBLE_LINES ? tr.state : tr.startState);
-  const sel = tr.newSelection?.main;
-  if (sel && sel.from < prefixEnd) {
-    return [tr, { selection: { anchor: prefixEnd } }];
-  }
-  return tr;
-});
-
-// Style preamble lines as dimmed / read-only
-const preambleLineDeco = Decoration.line({ attributes: { style: 'cursor: not-allowed;' } });
-const preambleLastLineDeco = Decoration.line({
-  attributes: {
-    style:
-      'cursor: not-allowed; border-bottom: 1px solid rgba(128,128,128,0.3); padding-bottom: 4px; margin-bottom: 4px;',
-  },
-});
-
-const preambleDecorationField = StateField.define<DecorationSet>({
-  create(state) {
-    return buildPreambleDecorations(state);
-  },
-  update(decos, tr) {
-    if (tr.docChanged) {
-      return buildPreambleDecorations(tr.state);
-    }
-    return decos;
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
-
-function buildPreambleDecorations(state: EditorState): DecorationSet {
-  const decorations = [];
-  const n = Math.min(PREAMBLE_LINES, state.doc.lines);
-  for (let i = 1; i <= n; i++) {
-    const line = state.doc.line(i);
-    decorations.push((i === n ? preambleLastLineDeco : preambleLineDeco).range(line.from));
-  }
-  return Decoration.set(decorations);
-}
+import { MPL_SYSTEM_PARAMS } from '../constants';
 
 function getMplTokenStyles(theme: GrafanaTheme2) {
   const isDark = theme.isDark;
@@ -141,7 +83,6 @@ interface Props {
   onBlur?: () => void;
   onRunQuery?: () => void;
   datasource: DataSource;
-  preamble?: string;
 }
 
 export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, datasource }: Props) {
@@ -196,20 +137,15 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
           ])
         ),
         EditorView.lineWrapping,
+        mplSystemParams.of(MPL_SYSTEM_PARAMS),
         mplHighlighter,
         completionExt,
         mplLinter,
         mplSignatureHelp,
         mplHover,
-        readOnlyPreamble,
-        cursorGuard,
-        preambleDecorationField,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
-            // Only emit the user-editable portion (after preamble)
-            const full = update.state.doc.toString();
-            const prefixEnd = preambleLength(update.state);
-            onChangeRef.current(full.slice(prefixEnd));
+            onChangeRef.current(update.state.doc.toString());
           }
         }),
         EditorView.domEventHandlers({
@@ -224,12 +160,9 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
         extensions.push(oneDark);
       }
 
-      // Prepend the preamble to the user's query
-      const doc = PREAMBLE + valueRef.current;
-
       view = new EditorView({
         state: EditorState.create({
-          doc,
+          doc: valueRef.current,
           extensions,
         }),
         parent: containerRef.current,
@@ -254,11 +187,10 @@ export function MplQueryCodeMirror({ value, onChange, onBlur, onRunQuery, dataso
     if (!view) {
       return;
     }
-    const prefixEnd = preambleLength(view.state);
-    const currentUserContent = view.state.doc.toString().slice(prefixEnd);
-    if (value !== currentUserContent) {
+    const current = view.state.doc.toString();
+    if (value !== current) {
       view.dispatch({
-        changes: { from: prefixEnd, to: view.state.doc.length, insert: value },
+        changes: { from: 0, to: view.state.doc.length, insert: value },
       });
     }
   }, [value]);

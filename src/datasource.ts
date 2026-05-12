@@ -12,10 +12,21 @@ import {
   MetricFindValue,
 } from '@grafana/data';
 
-import { AxiomMetricsQuery, MyDataSourceOptions, DEFAULT_QUERY, DataSourceResponse, Series, V2QueryResponse, ID, SeriesData, VariableQuery } from './types';
+import {
+  AxiomMetricsQuery,
+  MyDataSourceOptions,
+  DEFAULT_QUERY,
+  DataSourceResponse,
+  Series,
+  V2QueryResponse,
+  ID,
+  SeriesData,
+  VariableQuery,
+} from './types';
 import { lastValueFrom } from 'rxjs';
 import { diagnostics } from '@axiomhq/mpl';
 import { ensureMplInit } from './mpl/ensureMplInit';
+import { MPL_SYSTEM_PARAMS } from './constants';
 export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOptions> {
   baseUrl: string;
   uid: string;
@@ -34,11 +45,8 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
     return !!query.query;
   }
 
-
-
-
   async query(options: DataQueryRequest<AxiomMetricsQuery>): Promise<DataQueryResponse> {
-    const { range, intervalMs } = options;
+    const { range } = options;
     const data = [];
     for (const target of options.targets) {
       const mplQuery = target.query;
@@ -47,23 +55,10 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
       }
 
       const mplParams: Record<string, string> = {};
-      const intervalSecs = Math.max(1, Math.ceil(intervalMs / 1000));
-      mplParams['param____interval'] = `${intervalSecs}s`;
-      mplParams['param____rate_interval'] = `${intervalSecs * 4}s`;
-
       let preamble = '';
-      if (!/^\s*param\s+\$__interval\s*:/m.test(mplQuery)) {
-        preamble += 'param $__interval: duration;\n';
-      }
-      if (!/^\s*param\s+\$__rate_interval\s*:/m.test(mplQuery)) {
-        preamble += 'param $__rate_interval: duration;\n';
-      }
 
       for (const v of getTemplateSrv().getVariables()) {
         const name = v.name;
-        if (name === '__interval' || name === '__rate_interval') {
-          continue;
-        }
         const value = getTemplateSrv().replace(`$${name}`, options.scopedVars);
         mplParams[`param__${name}`] = `"${value}"`;
         if (!new RegExp(`^\\s*param\\s+\\$${name}\\s*:`, 'm').test(mplQuery)) {
@@ -75,8 +70,8 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
 
       await ensureMplInit();
 
-      const diags = diagnostics(fullQuery) as Array<{ severity: string }> | null;
-      if (diags?.some(d => d.severity === 'error')) {
+      const diags = diagnostics(fullQuery, MPL_SYSTEM_PARAMS) as Array<{ severity: string }> | null;
+      if (diags?.some((d) => d.severity === 'error')) {
         continue;
       }
 
@@ -86,8 +81,7 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
         return { error: resp.error, data: [] };
       }
 
-      const notices = resp.warnings
-        .map((w: string) => ({ severity: 'warning' as const, text: w }));
+      const notices = resp.warnings.map((w: string) => ({ severity: 'warning' as const, text: w }));
 
       // extract the data from the response
       for (const group of resp.data) {
@@ -109,9 +103,7 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
               name: 'Value',
               values: series.data,
               type: FieldType.number,
-              ...(hasTags
-                ? { labels: id.tags }
-                : { config: { displayNameFromDS: target.refId } }),
+              ...(hasTags ? { labels: id.tags } : { config: { displayNameFromDS: target.refId } }),
             },
           ],
         });
@@ -133,15 +125,17 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
       body.params = extraParams;
     }
 
-    const response = await lastValueFrom(getBackendSrv().fetch<V2QueryResponse>({
-      url: `${this.baseUrl}/query`,
-      method: 'POST',
-      data: JSON.stringify(body),
-      headers: {
-        'content-type': 'application/json',
-        'accept': 'application/vnd.metrics.v3+json',
-      },
-    }));
+    const response = await lastValueFrom(
+      getBackendSrv().fetch<V2QueryResponse>({
+        url: `${this.baseUrl}/query`,
+        method: 'POST',
+        data: JSON.stringify(body),
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/vnd.metrics.v3+json',
+        },
+      })
+    );
 
     const v2 = response.data;
     const series: Series[] = v2.series.map((s) => [
@@ -184,9 +178,7 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
   }
 
   async getTags(dataset: string, metric: string): Promise<string[]> {
-    const url = metric
-      ? `/info/datasets/${dataset}/metrics/${metric}/tags`
-      : `/info/datasets/${dataset}/tags`;
+    const url = metric ? `/info/datasets/${dataset}/metrics/${metric}/tags` : `/info/datasets/${dataset}/tags`;
     const response = await this.request(url, this.timeRangeParams());
     return Array.isArray(response.data) ? response.data : [];
   }
@@ -196,7 +188,7 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
    */
   async metricFindQuery(query: VariableQuery): Promise<MetricFindValue[]> {
     if (!query.dataset || !query.tag) {
-      return []
+      return [];
     }
     try {
       // For tag values, we would need to query the actual data
@@ -204,15 +196,21 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
       if (query.metric === '') {
         const tagValuesResponse = await this.request(`/info/datasets/${query.dataset}/tags/${query.tag}/values`);
         if (tagValuesResponse.data && Array.isArray(tagValuesResponse.data)) {
-          return tagValuesResponse.data.map((value: string) => ({ text: value, value: value })).sort((a, b) => a.text.localeCompare(b.text));
+          return tagValuesResponse.data
+            .map((value: string) => ({ text: value, value: value }))
+            .sort((a, b) => a.text.localeCompare(b.text));
         }
       } else {
-        const tagValuesResponse = await this.request(`/info/datasets/${query.dataset}/metrics/${query.metric}/tags/${query.tag}/values`);
+        const tagValuesResponse = await this.request(
+          `/info/datasets/${query.dataset}/metrics/${query.metric}/tags/${query.tag}/values`
+        );
         if (tagValuesResponse.data && Array.isArray(tagValuesResponse.data)) {
-          return tagValuesResponse.data.map((value: string) => ({ text: value, value: value })).sort((a, b) => a.text.localeCompare(b.text));
+          return tagValuesResponse.data
+            .map((value: string) => ({ text: value, value: value }))
+            .sort((a, b) => a.text.localeCompare(b.text));
         }
       }
-      return []
+      return [];
     } catch (error) {
       console.error('Error in metricFindQuery:', error);
       return [];
