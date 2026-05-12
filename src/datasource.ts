@@ -46,7 +46,7 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
   }
 
   async query(options: DataQueryRequest<AxiomMetricsQuery>): Promise<DataQueryResponse> {
-    const { range, intervalMs } = options;
+    const { range } = options;
     const data = [];
     for (const target of options.targets) {
       const mplQuery = target.query;
@@ -55,19 +55,10 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
       }
 
       const mplParams: Record<string, string> = {};
-      const intervalSecs = Math.max(1, Math.ceil(intervalMs / 1000));
-      mplParams['param____interval'] = `${intervalSecs}s`;
-
       let preamble = '';
-      if (!/^\s*param\s+\$__interval\s*:/m.test(mplQuery)) {
-        preamble += 'param $__interval: duration;\n';
-      }
 
       for (const v of getTemplateSrv().getVariables()) {
         const name = v.name;
-        if (name === '__interval') {
-          continue;
-        }
         const value = getTemplateSrv().replace(`$${name}`, options.scopedVars);
         mplParams[`param__${name}`] = `"${value}"`;
         if (!new RegExp(`^\\s*param\\s+\\$${name}\\s*:`, 'm').test(mplQuery)) {
