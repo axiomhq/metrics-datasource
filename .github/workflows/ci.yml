@@ -127,7 +127,7 @@ jobs:
 
   playwright-tests:
     needs: [resolve-versions, build]
-    timeout-minutes: 15
+    timeout-minutes: 25
     # Allow pre-release Grafana versions to fail without blocking CI
     continue-on-error: ${{ contains(matrix.GRAFANA_IMAGE.name, 'grafana-dev') }}
     strategy:
@@ -168,8 +168,34 @@ jobs:
         # Pinned to wait-for-grafana/v1.0.4 for reproducibility instead of moving @main
         uses: grafana/plugin-actions/wait-for-grafana@686ff644d420875e6eeb7b4c10d52d634feeacee
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright Browsers
-        run: npm exec playwright install chromium --with-deps
+        # cdn.playwright.dev intermittently stalls mid-download on hosted runners,
+        # leaving a live-but-silent socket that hangs the job until timeout. Fail fast
+        # on slow connections and retry each attempt with a fresh process so a stalled
+        # download is killed and re-attempted; the browser cache makes good runs cheap.
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: '120000'
+        run: |
+          set -u
+          for attempt in 1 2 3 4; do
+            echo "Playwright install attempt ${attempt}/4"
+            if timeout --kill-after=30s 240s npm exec -- playwright install chromium --with-deps; then
+              echo "Playwright browsers installed (attempt ${attempt})"
+              exit 0
+            fi
+            echo "Attempt ${attempt} stalled or failed; killing stragglers and retrying"
+            pkill -9 -f 'playwright.*install' 2>/dev/null || true
+            pkill -9 -f 'ms-playwright' 2>/dev/null || true
+            sleep 15
+          done
+          echo 'Playwright browser install failed after 4 attempts'
+          exit 1
 
       - name: Run Playwright tests
         id: run-tests
