@@ -75,7 +75,7 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
         continue;
       }
 
-      const resp = await this.execQuery({ ...target, query: fullQuery }, range, mplParams);
+      const resp = await this.execQuery({ ...target, query: fullQuery }, range, mplParams, options.maxDataPoints);
 
       if (resp.error) {
         return { error: resp.error, data: [] };
@@ -114,7 +114,12 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
     return { data };
   }
 
-  async execQuery(query: AxiomMetricsQuery, range: TimeRange, extraParams: Record<string, string> = {}) {
+  async execQuery(
+    query: AxiomMetricsQuery,
+    range: TimeRange,
+    extraParams: Record<string, string> = {},
+    chartWidth?: number
+  ) {
     const body: Record<string, unknown> = {
       mpl: query.query,
       startTime: range.from.toISOString(),
@@ -125,15 +130,23 @@ export class DataSource extends DataSourceApi<AxiomMetricsQuery, MyDataSourceOpt
       body.params = extraParams;
     }
 
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      accept: 'application/vnd.metrics.v3+json',
+    };
+
+    // Grafana sets maxDataPoints to the panel's width in pixels, so we forward it
+    // as the chart width hint so the backend can tailor series resolution.
+    if (chartWidth != null && Number.isFinite(chartWidth) && chartWidth > 0) {
+      headers['x-axiom-chart-width'] = String(Math.round(chartWidth));
+    }
+
     const response = await lastValueFrom(
       getBackendSrv().fetch<V2QueryResponse>({
         url: `${this.baseUrl}/query`,
         method: 'POST',
         data: JSON.stringify(body),
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/vnd.metrics.v3+json',
-        },
+        headers,
       })
     );
 
