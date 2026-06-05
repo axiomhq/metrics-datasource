@@ -153,7 +153,9 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          # Pinned to 24.15.0: Node 24.16.0+ ships a libuv change that hangs
+          # Playwright browser extraction (microsoft/playwright#40724).
+          node-version: '24.15.0'
           cache: 'npm'
 
       - name: Install dev dependencies
