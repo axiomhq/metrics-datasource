@@ -122,7 +122,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Resolve Grafana E2E versions
         id: resolve-versions
-        uses: grafana/plugin-actions/e2e-version@main
+        # Pinned to e2e-version/v2.0.0; @main is broken (unreleased dep bump crashes on Node 20)
+        uses: grafana/plugin-actions/e2e-version@73cd57e848b81e75e3c17697e6701c9fa1404bcc
 
   playwright-tests:
     needs: [resolve-versions, build]
@@ -164,7 +165,8 @@ jobs:
           DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d
 
       - name: Wait for grafana server
-        uses: grafana/plugin-actions/wait-for-grafana@main
+        # Pinned to wait-for-grafana/v1.0.4 for reproducibility instead of moving @main
+        uses: grafana/plugin-actions/wait-for-grafana@686ff644d420875e6eeb7b4c10d52d634feeacee
 
       - name: Install Playwright Browsers
         run: npm exec playwright install chromium --with-deps
